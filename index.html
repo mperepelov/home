@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>max-perepelov — /dev/profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&display=swap"
+    rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #090909;
+      --bg-panel: #0d0d0d;
+      --bg-input: #111111;
+      --border: #2e2e2e;
+      --border-2: #3e3e3e;
+      --dim: #606060;
+      --muted: #909090;
+      --mid: #b0b0b0;
+      --accent: #c8c8c8;
+      --bright: #d8d8d8;
+      --brighter: #e8e8e8;
+      --white: #f5f5f5;
+      --prompt-glyph: #888888;
+      --cursor-col: #e0e0e0;
+      --link: #e0e0e0;
+      --comment: #707070;
+    }
+
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--mid);
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 17px;
+      line-height: 1.75;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── CRT Scanlines ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(to bottom,
+          transparent,
+          transparent 1px,
+          rgba(0, 0, 0, 0.18) 1px,
+          rgba(0, 0, 0, 0.18) 2px);
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    /* ── Vignette ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse 90% 80% at 50% 50%,
+          transparent 55%,
+          rgba(0, 0, 0, 0.55) 100%);
+      pointer-events: none;
+      z-index: 9997;
+    }
+
+    /* ── Subtle ambient flicker ── */
+    @keyframes flicker {
+
+      0%,
+      94%,
+      97%,
+      100% {
+        opacity: 1;
+      }
+
+      95% {
+        opacity: 0.96;
+      }
+
+      96% {
+        opacity: 0.98;
+      }
+    }
+
+    /* ── Layout ── */
+    .page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+      animation: flicker 12s infinite;
+    }
+
+    /* ── Window Chrome ── */
+    .win-chrome {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 7px 7px 0 0;
+      padding: 11px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .win-dots {
+      display: flex;
+      gap: 7px;
+    }
+
+    .win-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--border-2);
+      border: 1px solid var(--dim);
+    }
+
+    .win-title {
+      flex: 1;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+    }
+
+    .win-title span {
+      color: var(--dim);
+    }
+
+    /* ── Terminal Body ── */
+    .terminal {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 36px 40px 44px;
+    }
+
+    @media (max-width: 600px) {
+      .terminal {
+        padding: 22px 18px 32px;
+      }
+
+      .page {
+        padding: 20px 12px 48px;
+      }
+    }
+
+    /* ── Staggered section reveal ── */
+    .block {
+      margin-bottom: 40px;
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    .block:nth-child(1) {
+      animation: rise 0.35s ease 0.15s forwards;
+    }
+
+    .block:nth-child(2) {
+      animation: rise 0.35s ease 0.5s forwards;
+    }
+
+    .block:nth-child(3) {
+      animation: rise 0.35s ease 0.9s forwards;
+    }
+
+    .block:nth-child(4) {
+      animation: rise 0.35s ease 1.25s forwards;
+    }
+
+    .block:nth-child(5) {
+      animation: rise 0.35s ease 1.6s forwards;
+    }
+
+    .block:nth-child(6) {
+      animation: rise 0.35s ease 1.95s forwards;
+    }
+
+    .block:nth-child(7) {
+      animation: rise 0.35s ease 2.3s forwards;
+    }
+
+    @keyframes rise {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ── Prompt ── */
+    .prompt {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0 8px;
+      margin-bottom: 14px;
+      font-size: 18px;
+    }
+
+    .p-user {
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .p-at {
+      color: var(--dim);
+      font-weight: 300;
+    }
+
+    .p-host {
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .p-path {
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    .p-sym {
+      color: var(--prompt-glyph);
+      user-select: none;
+    }
+
+    .p-cmd {
+      color: var(--brighter);
+      font-weight: 500;
+    }
+
+    .p-flag {
+      color: var(--mid);
+    }
+
+    .p-file {
+      color: var(--accent);
+      font-style: italic;
+    }
+
+    /* ── Output wrapper ── */
+    .output {
+      padding-left: 20px;
+      border-left: 1px solid var(--border);
+      margin-left: 2px;
+    }
+
+    /* ── Comment lines ── */
+    .cmt {
+      color: var(--comment);
+      font-size: 11.5px;
+      font-style: italic;
+      line-height: 1.5;
+    }
+
+    /* ── WHOAMI ── */
+    .name-row {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      margin-bottom: 4px;
+    }
+
+    .name {
+      color: var(--white);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .name-sep {
+      color: var(--border-2);
+      font-size: 18px;
+    }
+
+    .name-rule {
+      color: var(--dim);
+      font-size: 11px;
+      letter-spacing: 0.02em;
+      margin-bottom: 10px;
+    }
+
+    .role {
+      color: var(--accent);
+      font-size: 12.5px;
+      font-style: italic;
+      margin-bottom: 10px;
+    }
+
+    .bio {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 540px;
+      line-height: 1.8;
+    }
+
+    .bio em {
+      color: var(--mid);
+      font-style: normal;
+    }
+
+    /* ── Key-value rows ── */
+    .kv-list {
+      margin-top: 4px;
+    }
+
+    .kv {
+      display: flex;
+      align-items: baseline;
+      gap: 0;
+      margin-bottom: 3px;
+      font-size: 12px;
+    }
+
+    .kv-k {
+      color: var(--muted);
+      min-width: 100px;
+    }
+
+    .kv-eq {
+      color: var(--dim);
+      margin: 0 10px;
+    }
+
+    .kv-v {
+      color: var(--bright);
+    }
+
+    /* ── Experience ── */
+    .exp {
+      margin-bottom: 22px;
+    }
+
+    .exp-head {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0 6px;
+      margin-bottom: 2px;
+    }
+
+    .exp-years {
+      color: var(--muted);
+      font-size: 11px;
+      min-width: 96px;
+    }
+
+    .exp-dash {
+      color: var(--dim);
+      margin: 0 4px;
+    }
+
+    .exp-company {
+      color: var(--brighter);
+      font-weight: 500;
+    }
+
+    .exp-title {
+      color: var(--mid);
+      font-size: 11.5px;
+      font-style: italic;
+    }
+
+    .exp-desc {
+      color: var(--muted);
+      font-size: 11.5px;
+      padding-left: 100px;
+      line-height: 1.7;
+    }
+
+    /* ── Skills ── */
+    .skills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .tag {
+      color: var(--mid);
+      font-size: 11px;
+      padding: 2px 9px;
+      border: 1px solid var(--border-2);
+      background: transparent;
+      cursor: default;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .tag:hover {
+      border-color: var(--dim);
+      color: var(--bright);
+    }
+
+    /* ── Photography ── */
+    .photo-frame {
+      border: 1px solid var(--border-2);
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .photo-frame::before {
+      content: '// analog';
+      position: absolute;
+      top: -8px;
+      left: 14px;
+      background: var(--bg);
+      padding: 0 6px;
+      color: var(--comment);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+    }
+
+    .photo-title {
+      color: var(--bright);
+      font-size: 12.5px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .photo-spec {
+      display: flex;
+      align-items: baseline;
+      gap: 0;
+      margin-bottom: 4px;
+      font-size: 11.5px;
+    }
+
+    .ps-label {
+      color: var(--muted);
+      min-width: 64px;
+    }
+
+    .ps-sep {
+      color: var(--dim);
+      margin: 0 8px;
+    }
+
+    .ps-val {
+      color: var(--accent);
+    }
+
+    .photo-quote {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11.5px;
+      font-style: italic;
+    }
+
+    /* ── Links ── */
+    .link-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0;
+      margin-bottom: 9px;
+    }
+
+    .lk-label {
+      color: var(--muted);
+      font-size: 12px;
+      min-width: 130px;
+    }
+
+    .lk-arr {
+      color: var(--dim);
+      margin-right: 12px;
+    }
+
+    .lk-url {
+      color: var(--link);
+      text-decoration: none;
+      font-size: 12px;
+      border-bottom: 1px solid transparent;
+      padding-bottom: 1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .lk-url:hover {
+      color: var(--white);
+      border-bottom-color: var(--dim);
+    }
+
+    /* ── Cursor line ── */
+    .cursor-line {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: 12px;
+    }
+
+    @keyframes blink {
+
+      0%,
+      49% {
+        opacity: 1;
+      }
+
+      50%,
+      100% {
+        opacity: 0;
+      }
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: var(--cursor-col);
+      animation: blink 1.15s step-start infinite;
+      vertical-align: text-bottom;
+      position: relative;
+      top: 1px;
+    }
+
+    /* ── Thin horizontal rule ── */
+    hr.rule {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0 0 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+
+    <!-- Window chrome -->
+    <div class="win-chrome">
+      <div class="win-dots">
+        <div class="win-dot"></div>
+        <div class="win-dot"></div>
+        <div class="win-dot"></div>
+      </div>
+      <div class="win-title">
+        <span>max@terminal</span> &mdash; bash &mdash; 80&times;44
+      </div>
+      <div style="width:51px"></div><!-- balance -->
+    </div>
+
+    <!-- Terminal body -->
+    <div class="terminal">
+
+      <!-- ── 1. whoami ── -->
+      <div class="block">
+        <div class="prompt">
+          <span class="p-user">max</span><span class="p-at">@</span><span class="p-host">terminal</span><span
+            class="p-path">:~</span>&nbsp;<span class="p-sym">$</span>&nbsp;<span class="p-cmd">whoami</span>
+        </div>
+        <div class="output">
+          <div class="name-row">
+            <span class="name">Max Perepelov</span>
+          </div>
+          <div class="name-rule">────────────────────────────────────────</div>
+
+          <div class="role">// [Senior Full Stack SDET | Platform Engineer| 15+ Yrs in QA & Test Automation | Process
+            Architect]</div>
+
+          <div class="bio">
+            &gt;&nbsp;<em>[Software engineer based in Amsterdam with 15+ years of experience
+              testing, building, helping to scale any kind of software and systems. Currently at [Miro]. Loving the
+              challenges of
+              testing and implementing procceses. Also, love my film cameras.]</em>
+          </div>
+
+          <div class="kv-list" style="margin-top:14px">
+            <div class="kv"><span class="kv-k">location</span><span class="kv-eq">:</span><span class="kv-v">[Amsterdam,
+                NL]</span></div>
+            <div class="kv"><span class="kv-k">timezone</span><span class="kv-eq">:</span><span
+                class="kv-v">[GMT+1]</span></div>
+            <div class="kv"><span class="kv-k">status</span><span class="kv-eq">:</span><span class="kv-v">[learning
+                parenting]</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 2. experience ── -->
+      <div class="block">
+        <div class="prompt">
+          <span class="p-user">max</span><span class="p-at">@</span><span class="p-host">terminal</span><span
+            class="p-path">:~</span>&nbsp;<span class="p-sym">$</span>&nbsp;<span class="p-cmd">cat</span><span
+            class="p-file">experience.log</span>
+        </div>
+        <div class="output">
+          <br>
+
+          <div class="exp">
+            <div class="exp-head">
+              <span class="exp-years">2021 &mdash; now</span>
+              <span class="exp-dash">──</span>
+              <span class="exp-company">[Miro]</span>
+              <span class="exp-dash">&nbsp;/&nbsp;</span>
+              <span class="exp-title">[Senior Full Stack SDET x Platform engineer]</span>
+            </div>
+          </div>
+
+          <div class="exp">
+            <div class="exp-head">
+              <span class="exp-years">2016 &mdash; 2021</span>
+              <span class="exp-dash">──</span>
+              <span class="exp-company">[Epic Games x EPAM]</span>
+              <span class="exp-dash">&nbsp;/&nbsp;</span>
+              <span class="exp-title">[QA Lead]</span>
+            </div>
+          </div>
+
+        </div><!-- /output -->
+      </div><!-- /block 2: experience -->
+
+      <!-- ── 3. skills ── -->
+      <div class="block">
+        <div class="prompt">
+          <span class="p-user">max</span><span class="p-at">@</span><span class="p-host">terminal</span><span
+            class="p-path">:~</span>&nbsp;<span class="p-sym">$</span>&nbsp;<span class="p-cmd">ls</span>&nbsp;<span
+            class="p-flag">-1</span>&nbsp;<span class="p-file">./skills/</span>
+        </div>
+        <div class="output">
+          <div class="skills" style="margin-top:10px">
+            <span class="tag">[Test Automation Frameworks]</span>
+            <span class="tag">[Agentic engineering]</span>
+            <span class="tag">[Processes architecture]</span>
+            <span class="tag">[High scale Quality transformation]</span>
+            <span class="tag">[UI test automation]</span>
+            <span class="tag">[API test automation]</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 4. photography ── -->
+      <div class="block">
+        <div class="prompt">
+          <span class="p-user">max</span><span class="p-at">@</span><span class="p-host">terminal</span><span
+            class="p-path">:~</span>&nbsp;<span class="p-sym">$</span>&nbsp;<span class="p-cmd">cat</span><span
+            class="p-file">photography.md</span>
+        </div>
+        <div class="output">
+          <div class="photo-frame">
+            <div class="photo-title">Analog Film Photography</div>
+
+            <div class="photo-spec">
+              <span class="ps-label">cameras</span>
+              <span class="ps-sep">──</span>
+              <span class="ps-val">Canon AE-1 Program &nbsp;·&nbsp; Contax T2</span>
+            </div>
+            <div class="photo-spec">
+              <span class="ps-label">film</span>
+              <span class="ps-sep">──</span>
+              <span class="ps-val">Kodak ColorPlus 200 &nbsp;·&nbsp; Portra 400 &nbsp;·&nbsp; UltraMax 400</span>
+            </div>
+
+            <div class="photo-quote">
+              "No AI. No filters. No retakes. Pure analog."
+            </div>
+          </div>
+          <div class="cmt">&gt;&nbsp;Capturing unmanipulated moments on 35mm. Analog. Timeless. Minimal.</div>
+        </div>
+      </div>
+
+      <!-- ── 5. links ── -->
+      <div class="block">
+        <div class="prompt">
+          <span class="p-user">max</span><span class="p-at">@</span><span class="p-host">terminal</span><span
+            class="p-path">:~</span>&nbsp;<span class="p-sym">$</span>&nbsp;<span class="p-cmd">ls</span><span
+            class="p-file">./links/</span>
+        </div>
+        <div class="output">
+          <div class="link-row">
+            <span class="lk-label">linkedin</span>
+            <span class="lk-arr">→</span>
+            <a class="lk-url" href="https://www.linkedin.com/in/max-perepelov-7a64a057/" target="_blank"
+              rel="noopener noreferrer">linkedin.com/in/max-perepelov</a>
+          </div>
+          <div class="link-row">
+            <span class="lk-label">photography</span>
+            <span class="lk-arr">→</span>
+            <a class="lk-url" href="https://onlyfilm.photo" target="_blank" rel="noopener noreferrer">onlyfilm.photo</a>
+          </div>
+          <div class="link-row">
+            <span class="lk-label">github</span>
+            <span class="lk-arr">→</span>
+            <a class="lk-url" href="https://github.com/mperepelov/" target="_blank"
+              rel="noopener noreferrer">github.com/mperepelov</a>
+          </div>
+          <div class="link-row">
+            <span class="lk-label">email</span>
+            <span class="lk-arr">→</span>
+            <a class="lk-url" href="mailto:m.perepelov@gmail.com">m.perepelov@gmail.com</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 6. cursor ── -->
+      <div class="block" style="margin-bottom:0">
+        <div class="cursor-line">
+          <span class="p-user">max</span><span class="p-at">@</span><span class="p-host">terminal</span><span
+            class="p-path">:~</span>&nbsp;<span class="p-sym">$</span>&nbsp;<span class="cursor"></span>
+        </div>
+      </div>
+
+    </div><!-- /terminal -->
+  </div><!-- /page -->
+</body>
+
+</html>
